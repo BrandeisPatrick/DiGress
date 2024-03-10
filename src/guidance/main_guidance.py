@@ -1,7 +1,9 @@
 import os
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-import psi4
+os.environ['HYDRA_FULL_ERROR'] = '1'
+
+# import psi4
 from rdkit import Chem
 import torch
 import wandb
@@ -64,7 +66,7 @@ def main(cfg: DictConfig):
     datamodule = qm9_dataset.QM9DataModule(cfg, regressor=True)
     dataset_infos = qm9_dataset.QM9infos(datamodule=datamodule, cfg=cfg)
     datamodule.prepare_data()
-    train_smiles = qm9_dataset.get_train_smiles(cfg, datamodule, dataset_infos)
+    train_smiles = qm9_dataset.get_train_smiles(cfg, datamodule.train_dataloader(), dataset_infos)
 
     if cfg.model.extra_features is not None:
         extra_features = ExtraFeatures(cfg.model.extra_features, dataset_info=dataset_infos)
@@ -107,12 +109,13 @@ def main(cfg: DictConfig):
     if cfg.general.name == 'debug':
         print("[WARNING]: Run is called 'debug' -- it will run with fast_dev_run. ")
     trainer = Trainer(gradient_clip_val=cfg.train.clip_grad,
-                      gpus=cfg.general.gpus if torch.cuda.is_available() else 0,
+                      accelerator='gpu' if torch.cuda.is_available() and cfg.general.gpus > 0 else 'cpu',
+                      devices=cfg.general.gpus if torch.cuda.is_available() and cfg.general.gpus > 0 else None,
                       limit_test_batches=100,
                       max_epochs=cfg.train.n_epochs,
                       check_val_every_n_epoch=cfg.general.check_val_every_n_epochs,
                       fast_dev_run=cfg.general.name == 'debug',
-                      strategy='ddp' if cfg.general.gpus > 1 else None,        # TODO CHANGE with ray
+                      strategy='ddp' if cfg.general.gpus > 1 else 'auto',
                       enable_progress_bar=False,
                       logger=[],
                       )

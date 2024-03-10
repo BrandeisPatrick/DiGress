@@ -76,7 +76,9 @@ class PredefinedNoiseScheduleDiscrete(torch.nn.Module):
         assert int(t_normalized is None) + int(t_int is None) == 1
         if t_int is None:
             t_int = torch.round(t_normalized * self.timesteps)
-        return self.alphas_bar[t_int.long()]
+        # print('\n\n\n DEBUG get alpha bar', t_int.long(), '\n\n\n')
+        # print('\n\n\n DEBUG get alpha bar', self.alphas_bar, '\n\n\n')
+        return self.alphas_bar.to(t_int.device)[t_int.long()]
 
 
 class DiscreteUniformTransition:

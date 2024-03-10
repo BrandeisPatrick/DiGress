@@ -215,7 +215,8 @@ def main(cfg: DictConfig):
                       max_epochs=cfg.train.n_epochs,
                       check_val_every_n_epoch=cfg.general.check_val_every_n_epochs,
                       fast_dev_run=cfg.general.name == 'debug',
-                      strategy='ddp' if cfg.general.gpus > 1 else None,
+                    #   strategy='ddp' if cfg.general.gpus > 1 else None,
+                      strategy='ddp' if cfg.general.gpus > 1 else 'auto',
                       enable_progress_bar=False,
                       callbacks=callbacks,
                       logger=[])

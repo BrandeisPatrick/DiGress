@@ -125,7 +125,7 @@ class MolecularVisualization:
         imgs = [imageio.imread(fn) for fn in save_paths]
         gif_path = os.path.join(os.path.dirname(path), '{}.gif'.format(path.split('/')[-1]))
         imgs.extend([imgs[-1]] * 10)
-        imageio.mimsave(gif_path, imgs, subrectangles=True, fps=5)
+        imageio.mimsave(gif_path, imgs, subrectangles=True, duration=20)
 
         can_log=trainer is not None and hasattr(trainer,"logger") and trainer.logger is not None
         if can_log:
@@ -220,6 +220,6 @@ class NonMolecularVisualization:
         imgs = [imageio.imread(fn) for fn in save_paths]
         gif_path = os.path.join(os.path.dirname(path), '{}.gif'.format(path.split('/')[-1]))
         imgs.extend([imgs[-1]] * 10)
-        imageio.mimsave(gif_path, imgs, subrectangles=True, fps=5)
+        imageio.mimsave(gif_path, imgs, subrectangles=True, duration=20)
         wandb.log({'chain': [wandb.Video(gif_path, caption=gif_path, format="gif")]})
         return

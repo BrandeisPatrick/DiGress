@@ -12,8 +12,9 @@ general:
     number_chain_steps: 10        # Number of frames in each gif
     # THIS SHOULD BE THE SAME AS THE REGRESSION MODEL THAT IS LOADED
     guidance_target: 'homo'            # 'mu', 'homo', 'both', 'no-target'
-    trained_regressor_path: ~/src/public/DiGress/saved_models/regressor_homo_debug.ckpt
-    test_only: /Users/clementvignac/src/public/DiGress/saved_models/unconditional_debug.ckpt
+    # trained_regressor_path: ~/src/public/DiGress/saved_models/regressor_homo_debug.ckpt
+    trained_regressor_path: /home/patrickli/working/DiGressGuidance/outputs/2024-03-09/17-26-58/checkpoints/regressor/last.ckpt
+    test_only: /home/patrickli/working/DiGressGuidance/src/outputs/2024-03-09/19-27-08/checkpoints/try_checkpoint/last.ckpt
 train:
     batch_size: 1               # Needs to be 1 for testing
     save_model: False

@@ -156,7 +156,7 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         mae = self.cond_sample_metric(samples, target_properties)
         return {'mae': mae}
 
-    def test_epoch_end(self, outs) -> None:
+    def on_test_epoch_end(self) -> None:
         """ Measure likelihood on a test set and compute stability metrics. """
         final_mae = self.cond_val.compute()
         final_validity = self.num_valid_molecules / self.num_total

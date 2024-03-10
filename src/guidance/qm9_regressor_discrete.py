@@ -166,18 +166,28 @@ class Qm9RegressorDiscrete(pl.LightningModule):
     def validation_step(self, data, i):
         # input zero y to generate noised graphs
         target = data.y.clone()
+        # print('\n\n\n DEBUG target', target.shape, type(target), '\n\n\n')
         data.y = torch.zeros(data.y.shape[0], 0).type_as(data.y)
+        # print('\n\n\n DEBUG data.y', data.y.values, '\n\n\n')
 
         dense_data, node_mask = utils.to_dense(data.x, data.edge_index, data.edge_attr, data.batch)
         dense_data = dense_data.mask(node_mask)
+
+        # print('\n\n\n DEBUG dense_data', dense_data.X.shape) 
+        # print(dense_data.E.shape) 
+        # print(data.y.shape) 
+        # print('\n\n\n')
+
         noisy_data = self.apply_noise(dense_data.X, dense_data.E, data.y, node_mask)
         extra_data = self.compute_extra_data(noisy_data)
         pred = self.forward(noisy_data, extra_data, node_mask)
+
         mae = self.compute_val_loss(pred, target)
         # self.log('val_loss', mae, prog_bar=True, on_step=False, on_epoch=True)
         return {'val_loss': mae}
 
-    def validation_epoch_end(self, outs) -> None:
+    def on_validation_epoch_end(self) -> None:
+
         val_mae = self.val_loss.compute()
         to_log = {"val/epoch_mae": val_mae}
         print(f"Epoch {self.current_epoch}: val_mae: {val_mae :.3f}")
