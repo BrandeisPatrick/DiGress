@@ -180,6 +180,7 @@ def main(cfg: DictConfig):
     cfg = setup_wandb(cfg)
 
     if cfg.model.type == 'discrete':
+        print('\n\n\n DEBUG discrete model \n\n\n')
         model = DiscreteDenoisingDiffusion(cfg=cfg, **model_kwargs)
     else:
         model = LiftedDenoisingDiffusion(cfg=cfg, **model_kwargs)

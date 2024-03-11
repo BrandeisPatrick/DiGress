@@ -467,6 +467,59 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         y = torch.hstack((noisy_data['y_t'], extra_data.y)).float()
         return self.model(X, E, y, node_mask)
 
+
+
+    def graph_from_scaffold(self, scaffold_smile): 
+
+        from rdkit import Chem
+        from rdkit.Chem.rdchem import BondType as BT
+        from torch_geometric.data import Data
+
+        types = {'H': 0, 'C': 1, 'N': 2, 'O': 3, 'F': 4}
+        bonds = {BT.SINGLE: 0, BT.DOUBLE: 1, BT.TRIPLE: 2, BT.AROMATIC: 3}
+
+        mol = Chem.MolFromSmiles(scaffold_smile)
+
+        N = mol.GetNumAtoms()
+
+        type_idx = []
+
+        for atom in mol.GetAtoms():
+            type_idx.append(types[atom.GetSymbol()])
+
+        row, col, edge_type = [], [], []
+        for bond in mol.GetBonds():
+            start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
+            row += [start, end]
+            col += [end, start]
+            edge_type += 2 * [bonds[bond.GetBondType()] + 1]
+
+        edge_index = torch.tensor([row, col], dtype=torch.long)
+        edge_type = torch.tensor(edge_type, dtype=torch.long)
+        edge_attr = F.one_hot(edge_type, num_classes=len(bonds)+1).to(torch.float)
+
+        perm = (edge_index[0] * N + edge_index[1]).argsort()
+        edge_index = edge_index[:, perm]
+        edge_attr = edge_attr[perm]
+
+        x = F.one_hot(torch.tensor(type_idx), num_classes=len(types)).float()
+
+        # if self.remove_h:
+        #     type_idx = torch.Tensor(type_idx).long()
+        #     to_keep = type_idx > 0
+        #     edge_index, edge_attr = subgraph(to_keep, edge_index, edge_attr, relabel_nodes=True,
+        #                                         num_nodes=len(to_keep))
+        #     x = x[to_keep]
+        #     # Shift onehot encoding to match atom decoder
+        #     x = x[:, 1:]
+
+        batch_tensor = torch.zeros(N, dtype=torch.long)  # single molecule, single batch
+
+        data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, batch = batch_tensor)
+
+        return data 
+
+
     @torch.no_grad()
     def sample_batch(self, batch_id: int, batch_size: int, keep_chain: int, number_chain_steps: int,
                      save_final: int, num_nodes=None):
@@ -639,6 +692,42 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         assert ((prob_E.sum(dim=-1) - 1).abs() < 1e-4).all()
 
         sampled_s = diffusion_utils.sample_discrete_features(prob_X, prob_E, node_mask=node_mask)
+
+        ### added for subgraph generation #####################################################################
+        graph_scaffold = self.graph_from_scaffold(scaffold_smile='C=C=C=C')
+        dense_data_scaffold, node_mask_scaffold = utils.to_dense(graph_scaffold.x, graph_scaffold.edge_index,
+                                                                    graph_scaffold.edge_attr, graph_scaffold.batch)
+        
+        X_scaffold, E_scaffold = dense_data_scaffold.X, dense_data_scaffold.E
+        n_nodes_scaffold = X_scaffold.shape[1]
+        
+        # print('\n\n\n Start DEBUG \n\n\n')
+
+        # print('1', sampled_s.X) 
+        # print('\n')
+        # print('2', sampled_s.X.shape)
+        # print('\n')
+        # print('3', X_scaffold)
+        # print('\n')
+        # print('4', X_scaffold.shape)
+        # print('\n')
+        # print('5', X_scaffold.argmax(-1))
+        # print('\n')
+        # print('6', X_scaffold.argmax(-1).shape)
+        # print('\n')
+        # print('7', n_nodes_scaffold)
+        # print('\n')
+        # print('8', sampled_s.X[:, :n_nodes_scaffold])
+        # print('\n')
+        # print('\n\n\n END DEBUG \n\n\n')
+
+        # exit()
+
+        sampled_s.X[:, :n_nodes_scaffold] = X_scaffold.argmax(-1)
+        sampled_s.E[:, :n_nodes_scaffold, :n_nodes_scaffold] = E_scaffold.argmax(-1)
+        
+
+        ##################################################################################################################
 
         X_s = F.one_hot(sampled_s.X, num_classes=self.Xdim_output).float()
         E_s = F.one_hot(sampled_s.E, num_classes=self.Edim_output).float()
